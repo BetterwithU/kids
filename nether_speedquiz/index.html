@@ -350,11 +350,33 @@
   const SPAWN_INTERVAL_MS = 5000;      // 몹 등장 시간차 (ms)
 
   const MOB_TYPES = [
-    { name: '블레이즈',       img: 'mobs/blaze.png',          flying: true  },
-    { name: '가스트',         img: 'mobs/ghast.png',          flying: true  },
-    { name: '피글린 브루트',  img: 'mobs/piglin_brute.png',   flying: false },
-    { name: '위더 스켈레톤',  img: 'mobs/wither_skeleton.png',flying: false },
-    { name: '조글린',         img: 'mobs/zoglin.png',         flying: false },
+    { name: '블레이즈',       img: 'mobs/blaze.png',                    flying: true  },
+    { name: '가스트',         img: 'mobs/ghast.png',                    flying: true  },
+    { name: '브리즈',         img: 'mobs/breeze.webp',                  flying: true  },
+    { name: '엔더맨',         img: 'mobs/enderman.png',                 flying: false },
+    { name: '엔더마이트',     img: 'mobs/endermite.webp',               flying: false },
+    { name: '호글린',         img: 'mobs/hoglin.png',                   flying: false },
+    { name: '마그마 큐브',    img: 'mobs/magma_cube.png',               flying: false },
+    { name: '마녀',           img: 'mobs/witch.webp',                   flying: false },
+    { name: '피글린',         img: 'mobs/piglin.png',                   flying: false },
+    { name: '피글린 브루트',  img: 'mobs/piglin_brute.png',             flying: false },
+    { name: '복어',           img: 'mobs/pufferfish.webp',              flying: false },
+    { name: '셜커',           img: 'mobs/shulker.webp',                 flying: false },
+    { name: '좀벌레',         img: 'mobs/silverfish.webp',              flying: false },
+    { name: '스켈레톤',       img: 'mobs/skeleton.png',                 flying: false },
+    { name: '스켈레톤 기병',  img: 'mobs/skeleton_horseman.webp',       flying: false },
+    { name: '스파이더 조키',  img: 'mobs/spider_jockey.webp',           flying: false },
+    { name: '스트라이더',     img: 'mobs/strider.png',                  flying: false },
+    { name: '위더 스켈레톤',  img: 'mobs/wither_skeleton.png',          flying: false },
+    { name: '조글린',         img: 'mobs/zoglin.png',                   flying: false },
+    { name: '좀비 피글린',    img: 'mobs/zombified_piglin.png',         flying: false },
+    { name: '좀비 피그맨',    img: 'mobs/zombie_pigman.png',            flying: false },
+    { name: '좀비기병',       img: 'mobs/zombie_horseman.webp',         flying: false },
+    { name: '좀비주민 조키',  img: 'mobs/zombie_villager_jockey.webp',  flying: false },
+    { name: '크리킹',         img: 'mobs/creaking.webp',                flying: false },
+    { name: '파괴수 조키',    img: 'mobs/ravager_jockey.webp',          flying: false },
+    { name: '낙타 허스크 조키', img: 'mobs/camel_husk_jockey.webp',    flying: false },
+    { name: '드라운드',       img: 'mobs/drowned.webp',                 flying: false },
   ];
   const FINAL_BOSS = { name: '위더', img: 'mobs/wither.png', flying: true };
   // 동시에 3마리가 뜰 때 겹치지 않도록 좌·중앙·우 섹터 순서대로 배정
