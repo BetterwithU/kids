@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>네더 수학 디펜스</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Black+Han+Sans&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    height: 100vh; overflow: hidden;
+    background: #080202 center/cover no-repeat fixed;
+    color: #fff;
+    display: flex; align-items: flex-start; justify-content: center;
+    font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+  }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background: rgba(4,0,0,0.62);
+    pointer-events: none; z-index: 0;
+  }
+  /* 시작·결과·기록 화면: 중앙 정렬, 스크롤 허용 */
+  .screen {
+    position: relative; z-index: 1;
+    width: 100%; max-width: 760px;
+    display: none;
+    max-height: 100vh; overflow-y: auto;
+    padding: 24px 16px;
+  }
+  /* 게임 화면: 전체 높이 flex, 스크롤 없음 */
+  #game {
+    height: 100vh;
+    padding: 10px 16px 8px;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .screen { width: 100%; max-width: 760px; display: none; }
+  .screen.active { display: block; }
+
+  /* ===== 시작 화면 ===== */
+  #startScreen { padding-top: 12px; }
+  .game-title {
+    text-align: center; font-size: 52px; letter-spacing: 2px;
+    font-family: 'Black Han Sans', 'Malgun Gothic', sans-serif;
+    color: #fff;
+    text-shadow: 0 0 30px #ff4500, 0 0 60px #ff2200, 0 2px 0 #800;
+    margin-bottom: 6px;
+  }
+  .game-subtitle {
+    text-align: center; color: #ffb380; font-size: 15px; margin-bottom: 32px;
+    font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+    font-weight: normal;
+  }
+  .section-label {
+    font-size: 13px; color: #ff8c42; letter-spacing: 2px; text-transform: uppercase;
+    margin-bottom: 10px; display: block;
+  }
+  /* 교재 선택 버튼 */
+  #bookBtnRow { display: flex; gap: 10px; margin-bottom: 28px; }
+  .book-btn {
+    flex: 1; padding: 18px 8px; border-radius: 12px;
+    border: 2px solid rgba(255,69,0,0.4);
+    background: rgba(255,40,0,0.08);
+    color: #cc6633; cursor: pointer; text-align: center;
+    font-size: 16px; font-weight: bold; transition: all 0.18s;
+    font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+  }
+  .book-btn:hover:not(.unavailable) {
+    border-color: #ff4500; background: rgba(255,69,0,0.18); color: #ffcc99;
+    transform: translateY(-2px); box-shadow: 0 6px 20px rgba(255,69,0,0.3);
+  }
+  .book-btn.active {
+    border-color: #ff6600; background: linear-gradient(160deg,#ff4500,#cc2200);
+    color: #fff; box-shadow: 0 6px 24px rgba(255,69,0,0.5); transform: translateY(-2px);
+  }
+  .book-btn.unavailable { opacity: 0.3; cursor: not-allowed; }
+  .book-btn small { display: block; font-size: 11px; margin-top: 4px; font-weight: normal; opacity: 0.7; font-family: 'Malgun Gothic', sans-serif; }
+  /* 설정 카드 */
+  .config-card {
+    background: rgba(10,2,2,0.75);
+    border: 1px solid rgba(255,69,0,0.25);
+    border-radius: 16px; padding: 24px; margin-bottom: 20px;
+    backdrop-filter: blur(4px);
+  }
+  .config-row { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+  .config-row:last-child { margin-bottom: 0; }
+  .config-icon { font-size: 22px; flex-shrink: 0; }
+  .config-row input, .config-row select {
+    flex: 1; font-size: 16px; padding: 12px 14px;
+    border-radius: 10px; border: 1px solid rgba(255,69,0,0.35);
+    background: rgba(255,30,0,0.07); color: #fff;
+    font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+    outline: none; transition: border-color 0.15s;
+  }
+  .config-row input:focus, .config-row select:focus { border-color: #ff4500; }
+  .config-row input::placeholder { color: #996655; }
+  /* 버튼들 */
+  .btn-main {
+    display: block; width: 100%;
+    background: linear-gradient(180deg, #ff5500 0%, #cc2200 100%);
+    color: #fff; font-weight: bold; font-size: 22px; padding: 18px;
+    border-radius: 14px; border: none; cursor: pointer;
+    box-shadow: 0 6px 0 #6b1000, 0 8px 24px rgba(255,69,0,0.4);
+    font-family: 'Black Han Sans', 'Malgun Gothic', sans-serif;
+    letter-spacing: 2px; transition: all 0.12s;
+    margin-bottom: 12px;
+  }
+  .btn-main:hover { background: linear-gradient(180deg, #ff6a00, #dd2200); transform: translateY(-1px); }
+  .btn-main:active { transform: translateY(4px); box-shadow: 0 2px 0 #6b1000; }
+  .btn-sub {
+    display: block; width: 100%; padding: 13px;
+    border-radius: 10px; border: 1px solid rgba(255,69,0,0.4);
+    background: rgba(255,40,0,0.08); color: #ff8c42; font-size: 15px; cursor: pointer;
+    font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+    transition: all 0.12s; margin-bottom: 8px;
+  }
+  .btn-sub:hover { background: rgba(255,69,0,0.18); border-color: #ff4500; color: #ffcc99; }
+  .btn-danger { border-color: rgba(200,50,0,0.4); color: #cc5533; }
+  .btn-danger:hover { background: rgba(153,51,0,0.25); color: #ff8866; }
+  .hint { font-size: 12px; color: #664433; text-align: center; margin-top: 10px; font-family: 'Malgun Gothic', sans-serif; }
+
+  /* ===== 게임 화면 ===== */
+  #game { display: none; }
+  .hp-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .hp-label { font-size: 14px; color: #ffb380; white-space: nowrap; }
+  .hp-bar-bg { flex: 1; height: 18px; background: #2a0a0a; border-radius: 9px; overflow: hidden; border: 1px solid #803000; }
+  .hp-bar-fill { height: 100%; background: linear-gradient(90deg, #ff3030, #ff8030); transition: width 0.3s; }
+  .progress-row { font-size: 13px; color: #ffd9b3; margin-bottom: 6px; text-align: right; }
+
+  /* ---- 전장: 나를 중심으로 한 반원 ---- */
+  .battlefield {
+    position: relative;
+    flex: 1; min-height: 0;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 16px;
+    border: 2px solid #803000;
+    background: #1c0606 center/cover no-repeat;
+  }
+  /* 동심원 오버레이: 배경 이미지 위에 반투명하게 */
+  .battlefield::before {
+    content: '';
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(circle at 50% 100%,
+        rgba(255,110,0,0.18) 0%, rgba(255,110,0,0.18) 14%, transparent 14.6%,
+        transparent 34%, rgba(255,110,0,0.12) 34.6%, rgba(255,110,0,0.12) 36%, transparent 36.6%,
+        transparent 60%, rgba(255,110,0,0.07) 60.6%, rgba(255,110,0,0.07) 62%, transparent 62.6%
+      ),
+      linear-gradient(180deg, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.5) 100%);
+    pointer-events: none;
+    z-index: 1;
+  }
+  .player, .mob-sprite { z-index: 3; }
+  .player-name {
+    font-size: 13px; font-weight: bold; color: #fff;
+    text-shadow: 0 0 4px #000, 0 0 4px #000;
+    text-align: center; white-space: nowrap;
+    margin-top: 2px;
+  }
+  .player {
+    position: absolute;
+    bottom: -16px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 64px;
+    z-index: 5;
+    filter: drop-shadow(0 0 8px #ff8c42);
+  }
+  .mob-sprite {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    cursor: pointer;
+    z-index: 3;
+  }
+  .mob-sprite.selected { z-index: 4; }
+  .mob-img { display: block; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8)); image-rendering: pixelated; }
+  .mob-sprite.selected .mob-img { filter: drop-shadow(0 0 12px #ffcc00) drop-shadow(0 0 6px #ffcc00); }
+  .mob-sprite .label {
+    font-weight: bold;
+    white-space: nowrap;
+    color: #fff;
+    text-shadow: 0 0 5px #000, 0 0 3px #000, 0 0 3px #000;
+  }
+  .mob-sprite.ground .mob-img { animation: stagger 0.5s steps(2) infinite; }
+  .mob-sprite.flying .mob-img { animation: hover 1.6s ease-in-out infinite; }
+  .mob-sprite.shake .mob-img { animation: shake 0.3s !important; }
+
+  @keyframes stagger {
+    0%   { transform: translateX(0) rotate(0deg); }
+    50%  { transform: translateX(3px) rotate(-5deg); }
+    100% { transform: translateX(-3px) rotate(5deg); }
+  }
+  @keyframes hover {
+    0%, 100% { transform: translateY(0) rotate(-3deg); }
+    50%      { transform: translateY(-8px) rotate(3deg); }
+  }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    25% { transform: translateX(-8px); }
+    75% { transform: translateX(8px); }
+  }
+
+  .answer-row { display: flex; gap: 8px; margin-bottom: 4px; }
+  #answerInput {
+    flex: 1; font-size: 20px; padding: 12px; border-radius: 8px; border: 2px solid #ff4500;
+    background: #1a0505; color: #fff; text-align: center;
+  }
+  .btn-submit {
+    background: linear-gradient(180deg, #4ade80, #16a34a);
+    color: #042; font-weight: bold; padding: 12px 20px;
+  }
+  #feedback { text-align: center; font-size: 16px; min-height: 24px; margin-bottom: 8px; }
+  #feedback.ok { color: #4ade80; }
+  #feedback.bad { color: #ff6060; }
+
+  /* ---- 결과 화면 ---- */
+  #result { display: none; text-align: center; }
+  #result .big { font-size: 26px; margin-bottom: 12px; }
+  #result .stat { font-size: 16px; color: #ffd9b3; margin-bottom: 6px; }
+
+  .hint { font-size: 12px; color: #ffb380; text-align: center; margin-top: 8px; }
+  .btn-sub {
+    width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ff4500;
+    background: transparent; color: #ff8c42; font-size: 15px; cursor: pointer;
+  }
+  .btn-sub:hover { background: rgba(255,69,0,0.15); }
+  .btn-danger { border-color: #993300; color: #cc6633; }
+  .btn-danger:hover { background: rgba(153,51,0,0.2); }
+  /* ===== 기록 화면 ===== */
+  #records h1 { margin-bottom: 24px; }
+  .medals-row { display: flex; gap: 10px; margin-bottom: 24px; }
+  .medal-card {
+    flex: 1; border-radius: 14px; padding: 16px 8px; text-align: center;
+    background: rgba(10,2,2,0.75); border: 2px solid #333;
+    transition: transform 0.15s;
+  }
+  .medal-card:hover { transform: translateY(-3px); }
+  .medal-card.gold   { border-color: #ffd700; box-shadow: 0 4px 20px rgba(255,215,0,0.2); }
+  .medal-card.silver { border-color: #c0c0c0; box-shadow: 0 4px 20px rgba(192,192,192,0.15); }
+  .medal-card.bronze { border-color: #cd7f32; box-shadow: 0 4px 20px rgba(205,127,50,0.15); }
+  .medal-card .medal-icon { font-size: 36px; }
+  .medal-card .medal-name { font-size: 15px; font-weight: bold; color: #fff; margin: 6px 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .medal-card .medal-score { font-size: 24px; font-weight: bold; color: #ffcc66; margin: 2px 0; }
+  .medal-card .medal-detail { font-size: 11px; color: #888; margin-top: 3px; font-family: 'Malgun Gothic', sans-serif; font-weight: normal; }
+  .records-toolbar { display: flex; gap: 10px; margin-bottom: 16px; }
+  .records-toolbar .btn-sub { flex: 1; margin-bottom: 0; }
+  #recordsTableWrap { overflow-x: auto; max-height: 420px; overflow-y: auto; border-radius: 12px; border: 1px solid rgba(255,69,0,0.2); }
+  #recordsTableWrap table { width: 100%; border-collapse: collapse; font-size: 13px; font-family: 'Malgun Gothic', sans-serif; }
+  #recordsTableWrap th { background: rgba(60,10,10,0.95); color: #ff8c42; padding: 10px 8px; position: sticky; top: 0; font-weight: bold; }
+  #recordsTableWrap td { padding: 9px 8px; border-bottom: 1px solid rgba(255,40,0,0.1); color: #ddd; text-align: center; }
+  #recordsTableWrap tr:hover td { background: rgba(255,40,0,0.07); }
+</style>
+</head>
+<body>
+
+<div class="screen" id="startScreen">
+  <div class="game-title">🔥 네더 수학 디펜스 🔥</div>
+  <div class="game-subtitle">몰려오는 몹들의 수학 문제를 풀어 네더를 지켜라!</div>
+
+  <span class="section-label">📚 교재 선택</span>
+  <div id="bookBtnRow"></div>
+
+  <div class="config-card">
+    <div class="config-row">
+      <span class="config-icon"><img src="mobs/steve.png" style="height:32px;image-rendering:pixelated;vertical-align:middle;"></span>
+      <input type="text" id="playerNameInput" placeholder="주인공 이름을 입력하세요" maxlength="10">
+    </div>
+    <div class="config-row">
+      <span class="config-icon">🔢</span>
+      <select id="countSelect">
+        <option value="random">랜덤 (10~20문제)</option>
+        <option value="10">10문제</option>
+        <option value="15">15문제</option>
+        <option value="20">20문제</option>
+      </select>
+    </div>
+    <div class="config-row">
+      <span class="config-icon">📋</span>
+      <select id="endModeSelect">
+        <option value="restart">HP 0 → 게임오버 후 자동 재시작</option>
+        <option value="result">HP 0 → 결과 화면으로</option>
+        <option value="continue">HP 0 → 페널티 없이 계속</option>
+      </select>
+    </div>
+  </div>
+
+  <button class="btn-main" id="startBtn">⚔️ 전투 시작!</button>
+  <button class="btn-sub" id="recordsBtn">🏆 기록 보기</button>
+  <div class="hint">정답을 맞히면 몹을 해치우고 · 틀리면 몹이 계속 다가와요</div>
+</div>
+
+<div class="screen" id="game">
+  <h1 style="font-size:20px;margin-bottom:6px;">🔥 네더 수학 디펜스 🔥</h1>
+  <div class="hp-row">
+    <span class="hp-label">❤️ HP</span>
+    <div class="hp-bar-bg"><div class="hp-bar-fill" id="hpFill"></div></div>
+    <span class="hp-label" id="hpText">100</span>
+  </div>
+  <div class="progress-row" id="progressText">문제 0 / 0</div>
+
+  <div class="battlefield" id="battlefield">
+    <div class="player"><img src="mobs/steve.png" style="height:64px;image-rendering:pixelated;filter:drop-shadow(0 0 8px #ff8c42);"><div class="player-name" id="playerNameTag"></div></div>
+  </div>
+
+  <div id="feedback"></div>
+  <div class="answer-row">
+    <input type="text" id="answerInput" placeholder="정답을 입력!" inputmode="numeric" pattern="[0-9]*">
+    <button class="btn-submit" id="submitBtn">공격!</button>
+  </div>
+  <div class="hint">몹을 눌러 풀고 싶은 문제를 선택하세요 — 가까운 몹일수록 위험해요!</div>
+</div>
+
+<div class="screen" id="result">
+  <div class="game-title" style="font-size:36px;margin-bottom:24px;">⚔️ 전투 결과 ⚔️</div>
+  <div class="config-card" style="text-align:center;margin-bottom:20px;">
+    <div id="resultTitle" style="font-size:26px;margin-bottom:16px;font-family:'Black Han Sans',sans-serif;"></div>
+    <div id="resultStat1" style="font-size:15px;color:#ffb380;margin-bottom:8px;font-family:'Malgun Gothic',sans-serif;"></div>
+    <div id="resultStat2" style="font-size:15px;color:#ffd9b3;margin-bottom:8px;font-family:'Malgun Gothic',sans-serif;"></div>
+    <div id="resultStat3" style="font-size:15px;color:#ffd9b3;margin-bottom:8px;font-family:'Malgun Gothic',sans-serif;"></div>
+    <div id="resultStat4" style="font-size:18px;color:#ffcc66;font-weight:bold;margin-top:8px;font-family:'Malgun Gothic',sans-serif;"></div>
+  </div>
+  <button class="btn-main" id="retryBtn">🔄 다시 도전하기</button>
+  <button class="btn-sub" id="toRecordsBtn">🏆 기록 보기</button>
+</div>
+
+<div class="screen" id="records">
+  <h1>🏆 전투 기록부 🏆</h1>
+
+  <div class="medals-row" id="medalsRow"></div>
+
+  <div class="records-toolbar">
+    <button class="btn-sub" id="exportCsvBtn">📥 CSV 내보내기</button>
+    <button class="btn-sub btn-danger" id="clearRecordsBtn">🗑️ 전체 삭제</button>
+  </div>
+
+  <div id="recordsTableWrap"></div>
+
+  <button class="btn-sub" id="backToStartBtn" style="margin-top:16px;">← 처음으로</button>
+</div>
+
+<script>
+(function () {
+  // ========== 설정 ==========
+  const MAX_HP = 100;
+  const HP_DAMAGE_ON_REACH = 10;       // 몹이 도달했을 때 깎이는 HP
+  const APPROACH_DURATION_MS = 50000;  // 몹이 처음부터 도달까지 걸리는 시간
+  const APPROACH_TICK_MS = 100;        // 접근 갱신 주기
+  const MOB_SLOTS = 3;                 // 동시에 등장하는 몹 수
+  const SPAWN_INTERVAL_MS = 5000;      // 몹 등장 시간차 (ms)
+
+  const MOB_TYPES = [
+    { name: '블레이즈',       img: 'mobs/blaze.png',          flying: true  },
+    { name: '가스트',         img: 'mobs/ghast.png',          flying: true  },
+    { name: '피글린 브루트',  img: 'mobs/piglin_brute.png',   flying: false },
+    { name: '위더 스켈레톤',  img: 'mobs/wither_skeleton.png',flying: false },
+    { name: '조글린',         img: 'mobs/zoglin.png',         flying: false },
+  ];
+  const FINAL_BOSS = { name: '위더', img: 'mobs/wither.png', flying: true };
+  // 동시에 3마리가 뜰 때 겹치지 않도록 좌·중앙·우 섹터 순서대로 배정
+  const MOB_SECTORS = [-58, 0, 58];
+  let mobSectorCounter = 0;
+
+  const BG_IMAGES = [
+    'backgrounds/nether_wastes.png',
+    'backgrounds/crimson_forest.png',
+    'backgrounds/warped_forest.png',
+    'backgrounds/basalt_deltas.png',
+    'backgrounds/soul_sand_valley.png',
+    'backgrounds/nether_fortress.png',
+    'backgrounds/bastion.png',
+    'backgrounds/the_nether.png',
+    'backgrounds/nether_biomes.png',
+    'backgrounds/ruined_portal.png',
+  ];
+
+  // ========== 문제 생성 (조건부 랜덤) ==========
+  function randInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  // 유형1: 두 자리 - 한 자리, 받아내림 발생 (일의 자리 < 빼는 수)
+  function genType1() {
+    let a, b;
+    do {
+      a = randInt(10, 99);
+      b = randInt(2, 9);
+    } while ((a % 10) >= b);
+    return { text: `${a} - ${b}`, answer: a - b };
+  }
+
+  // 유형2: 두 자리 - 두 자리, 받아내림 발생 (일의 자리끼리 빌려와야 함, 결과는 양수)
+  function genType2() {
+    let a, b;
+    do {
+      a = randInt(20, 99);
+      b = randInt(10, a - 1);
+    } while ((a % 10) >= (b % 10));
+    return { text: `${a} - ${b}`, answer: a - b };
+  }
+
+  // 유형3: 세 수의 덧셈, 받아올림 발생 (일의 자리 합이 10 이상)
+  function genType3() {
+    let a, b, c;
+    do {
+      a = randInt(10, 49);
+      b = randInt(10, 49);
+      c = randInt(10, 49);
+    } while ((a % 10) + (b % 10) + (c % 10) < 10);
+    return { text: `${a} + ${b} + ${c}`, answer: a + b + c };
+  }
+
+  // 유형4: 세 수의 뺄셈, 받아내림 발생 (A - B - C, 첫 번째 뺄셈에서 받아내림 / 결과는 자연수)
+  function genType4() {
+    let a, b, c;
+    do {
+      a = randInt(40, 99);
+      b = randInt(10, a - 20);
+      c = randInt(10, a - b);
+    } while ((a % 10) >= (b % 10));
+    return { text: `${a} - ${b} - ${c}`, answer: a - b - c };
+  }
+
+  // 유형5: 세 수의 덧셈과 뺄셈 (A + B - C), 덧셈에서 받아올림 발생 / 결과는 자연수
+  function genType5() {
+    let a, b, c;
+    do {
+      a = randInt(10, 49);
+      b = randInt(10, 49);
+      c = randInt(10, a + b);
+    } while ((a % 10) + (b % 10) < 10);
+    return { text: `${a} + ${b} - ${c}`, answer: a + b - c };
+  }
+
+  // 유형6: 세 수의 덧셈과 뺄셈 (A - B + C), 뺄셈에서 받아내림 발생
+  function genType6() {
+    let a, b, c;
+    do {
+      a = randInt(20, 99);
+      b = randInt(10, a - 1);
+      c = randInt(10, 49);
+    } while ((a % 10) >= (b % 10));
+    return { text: `${a} - ${b} + ${c}`, answer: a - b + c };
+  }
+
+  // ========== 문제 데이터베이스 ==========
+  // 새 교재 추가 시 여기에 항목 추가. gen 함수는 위 genTypeN 중 하나 또는 새로 정의.
+  const PROBLEM_DB = [
+    // 소마셈 B2
+    { id:'B2-1',  book:'B2', week:1, label:'1주차 — 두 자리 − 한 자리 받아내림', tags:['뺄셈','두자리-한자리','받아내림'], gen:genType1 },
+    { id:'B2-2',  book:'B2', week:2, label:'2주차 — 두 자리 − 두 자리 받아내림', tags:['뺄셈','두자리-두자리','받아내림'], gen:genType2 },
+    { id:'B2-3a', book:'B2', week:3, label:'3주차 — 두 자리 뺄셈 종합 (한자리)', tags:['뺄셈','두자리','받아내림'], gen:genType1 },
+    { id:'B2-3b', book:'B2', week:3, label:'3주차 — 두 자리 뺄셈 종합 (두자리)', tags:['뺄셈','두자리','받아내림'], gen:genType2 },
+    { id:'B2-4a', book:'B2', week:4, label:'4주차 — 세 수 A+B+C', tags:['세수','덧셈','받아올림'], gen:genType3 },
+    { id:'B2-4b', book:'B2', week:4, label:'4주차 — 세 수 A−B−C', tags:['세수','뺄셈','받아내림'], gen:genType4 },
+    { id:'B2-4c', book:'B2', week:4, label:'4주차 — 세 수 A+B−C', tags:['세수','덧뺄셈','받아올림'], gen:genType5 },
+    { id:'B2-4d', book:'B2', week:4, label:'4주차 — 세 수 A−B+C', tags:['세수','덧뺄셈','받아내림'], gen:genType6 },
+    // 소마셈 B3 — 추후 추가
+    // 소마셈 B4 — 추후 추가
+  ];
+
+  // 교재 목록 (PROBLEM_DB에 없어도 버튼은 미리 표시)
+  const BOOK_LIST = [
+    { id:'B2', label:'소마셈 B2' },
+    { id:'B3', label:'소마셈 B3' },
+    { id:'B4', label:'소마셈 B4' },
+  ];
+
+  let selectedBook = 'B2';
+
+  function generateProblem() {
+    const pool = PROBLEM_DB.filter(e => e.book === selectedBook);
+    const entry = pool[randInt(0, pool.length - 1)];
+    return entry.gen();
+  }
+
+  // ========== 게임 상태 ==========
+  // spawnedCount: 지금까지 등장시킨 몹 수 (스폰 제어용)
+  // resolvedCount: 격퇴했든 놓쳤든 "결판이 난" 몹 수 (진행도·종료 판정용)
+  let hp, totalProblems, spawnedCount, resolvedCount, correctCount, wrongAttempts, bossDefeated;
+  let mobs = [];           // {id, type, problem, distance(0~1)}
+  let selectedMobId = null;
+  let mobIdCounter = 0;
+  let nextSpawnTime = 0;   // 다음 몹 등장 가능 시각 (시간차 등장용)
+  let tickTimer = null;
+  let endMode = 'restart';
+  let gameEnded = false;
+  let playerName = '';
+  let gameStartTime = 0;
+  const RESULTS_KEY = 'netherDefenseResults';
+
+  const $ = (id) => document.getElementById(id);
+
+  const SCREEN_IDS = ['startScreen', 'game', 'result', 'records'];
+  const SCREEN_MAP = { start: 'startScreen', game: 'game', result: 'result', records: 'records' };
+  function showScreen(name) {
+    SCREEN_IDS.forEach(id => {
+      const el = $(id);
+      el.style.display = 'none';
+      el.classList.remove('active');
+    });
+    const target = $(SCREEN_MAP[name]);
+    target.style.display = name === 'game' ? 'flex' : 'block';
+    target.classList.add('active');
+    // 시작 화면엔 랜덤 네더 배경
+    if (name === 'start') {
+      document.body.style.backgroundImage = `url('${BG_IMAGES[randInt(0, BG_IMAGES.length - 1)]}')`;
+    }
+  }
+
+  function pickMobType() {
+    return MOB_TYPES[randInt(0, MOB_TYPES.length - 1)];
+  }
+
+  function spawnMob() {
+    if (spawnedCount >= totalProblems) return; // 더 이상 새 몹 필요 없음
+
+    const isLast = (spawnedCount === totalProblems - 1);
+    const type = (isLast ? FINAL_BOSS : pickMobType());
+
+    const mob = {
+      id: ++mobIdCounter,
+      type,
+      problem: generateProblem(),
+      distance: 0,
+      angle: MOB_SECTORS[mobSectorCounter++ % MOB_SECTORS.length] + randInt(-10, 10),
+      speedFactor: 0.8 + Math.random() * 0.4,   // 몹마다 속도 약간 차이
+      wobbleSeed: Math.random() * 1000,          // 삐걱대는 걸음 효과용
+      wobbleAmp: 1 + Math.random() * 2,          // 거의 직선, 살짝만 흔들림
+    };
+    mobs.push(mob);
+    spawnedCount++;
+    if (selectedMobId === null) selectedMobId = mob.id;
+    renderMobs();
+  }
+
+  function renderMobs() {
+    const field = $('battlefield');
+    field.querySelectorAll('.mob-sprite').forEach(el => el.remove());
+
+    const w = field.clientWidth;
+    const h = field.clientHeight;
+    const centerX = w / 2;
+    const centerY = h - 16;            // 플레이어 위치 (bottom:-16px 기준)
+    const maxRadius = Math.min(w / 2, h) * 0.96;
+    const now = Date.now();
+
+    mobs.forEach((mob) => {
+      // 사방에서 무질서하게 돌진해오는 느낌: 기본 각도에 시간에 따른 흔들림(wobble)을 더함
+      const wobble = Math.sin(now / 900 + mob.wobbleSeed) * mob.wobbleAmp;
+      const angleRad = ((mob.angle + wobble) * Math.PI) / 180;
+
+      const radius = maxRadius * (1 - mob.distance) + 16;
+      let x = centerX + radius * Math.sin(angleRad);
+      let y = centerY - radius * Math.cos(angleRad);
+
+      const scale = 0.5 + 0.95 * mob.distance; // 가까울수록 커짐 (위험도 시각화)
+
+      if (mob.type.flying) {
+        // 하늘을 나는 몹: 더 높이 떠 있고 둥실둥실 부유
+        y -= 50 * scale + Math.sin(now / 420 + mob.wobbleSeed) * 10;
+      }
+
+      const sprite = document.createElement('div');
+      sprite.className = 'mob-sprite ' + (mob.type.flying ? 'flying' : 'ground') + (mob.id === selectedMobId ? ' selected' : '');
+      sprite.dataset.id = mob.id;
+      sprite.style.left = x + 'px';
+      sprite.style.top = Math.max(20, y) + 'px';
+      const imgSize = Math.round(112 * scale);
+      sprite.innerHTML = `
+        <span class="label" style="font-size:${34 * scale}px;display:block;margin-bottom:4px;">${mob.problem.text} = ?</span>
+        <img src="${mob.type.img}" class="mob-img" style="width:${imgSize}px;height:${imgSize}px;">
+      `;
+      sprite.addEventListener('click', () => {
+        selectedMobId = mob.id;
+        renderMobs();
+        $('answerInput').focus();
+      });
+      field.appendChild(sprite);
+    });
+  }
+
+  function updateHpBar() {
+    const pct = Math.max(0, Math.round((hp / MAX_HP) * 100));
+    $('hpFill').style.width = pct + '%';
+    $('hpText').textContent = hp;
+  }
+
+  function updateProgress() {
+    $('progressText').textContent = `문제 ${resolvedCount} / ${totalProblems}`;
+  }
+
+  function tick() {
+    mobs.forEach((mob) => {
+      mob.distance += (APPROACH_TICK_MS / APPROACH_DURATION_MS) * mob.speedFactor;
+      if (mob.distance >= 1) {
+        mob.distance = 1;
+        mob.arrived = true;
+      }
+    });
+
+    // 도달한 몹 처리: HP 감소 후 제거 (해당 몹은 "결판난" 것으로 카운트)
+    const arrived = mobs.filter(m => m.arrived);
+    if (arrived.length) {
+      arrived.forEach((m) => {
+        hp = Math.max(0, hp - HP_DAMAGE_ON_REACH);
+        resolvedCount++;
+        flashCard(m.id);
+      });
+      mobs = mobs.filter(m => !m.arrived);
+      if (selectedMobId !== null && !mobs.find(m => m.id === selectedMobId)) {
+        selectedMobId = mobs.length ? mobs[0].id : null;
+      }
+      updateHpBar();
+      updateProgress();
+      checkHpZero();
+    }
+
+    renderMobs();
+
+    if (mobs.length < MOB_SLOTS && spawnedCount < totalProblems && Date.now() >= nextSpawnTime) {
+      spawnMob();
+      nextSpawnTime = Date.now() + SPAWN_INTERVAL_MS;
+    }
+
+    checkWaveEnd();
+  }
+
+  function checkWaveEnd() {
+    if (gameEnded) return;
+    if (!mobs.length && resolvedCount >= totalProblems) {
+      endGame(bossDefeated ? 'victory' : 'survived');
+    }
+  }
+
+  function flashCard(mobId) {
+    // 도달 직후 살짝 흔들리는 효과 (DOM이 곧 갱신되므로 클래스만 시각 신호로 사용)
+    const card = document.querySelector(`.mob-sprite[data-id="${mobId}"]`);
+    if (card) card.classList.add('shake');
+  }
+
+  function checkHpZero() {
+    if (gameEnded) return;
+    if (hp <= 0) {
+      if (endMode === 'restart') {
+        endGame('restart');
+      } else if (endMode === 'result') {
+        endGame('result');
+      }
+      // 'continue' 모드는 별다른 처리 없이 진행 (HP 0 유지, 전투 계속)
+    }
+  }
+
+  function setFeedback(text, ok) {
+    const el = $('feedback');
+    el.textContent = text;
+    el.className = ok ? 'ok' : 'bad';
+    if (text) {
+      setTimeout(() => { el.textContent = ''; el.className = ''; }, 1200);
+    }
+  }
+
+  function submitAnswer() {
+    if (gameEnded) return;
+    const input = $('answerInput');
+    const val = input.value.trim();
+    if (val === '' || mobs.length === 0) return;
+
+    const typed = parseInt(val, 10);
+    if (isNaN(typed)) return;
+    // 선택 여부 상관없이 정답이 일치하는 몹을 찾아 격파 (가장 가까운 몹 우선)
+    const sorted = [...mobs].sort((a, b) => b.distance - a.distance);
+    const mob = sorted.find(m => m.problem.answer === typed);
+
+    if (mob) {
+      // 정답: 해당 몹 격파
+      correctCount++;
+      resolvedCount++;
+      if (mob.type === FINAL_BOSS) bossDefeated = true;
+      mobs = mobs.filter(m => m.id !== mob.id);
+      selectedMobId = mobs.length ? mobs[0].id : null;
+      setFeedback(`${mob.type.name} 격퇴! 🎯`, true);
+
+      if (mobs.length < MOB_SLOTS && spawnedCount < totalProblems && Date.now() >= nextSpawnTime) {
+        spawnMob();
+      } else {
+        renderMobs();
+      }
+
+      checkWaveEnd();
+    } else {
+      // 오답: 몹은 멈추지 않고 계속 다가옴
+      wrongAttempts++;
+      setFeedback('틀렸습니다! 몹이 계속 다가옵니다...', false);
+    }
+    input.value = '';
+    input.focus();
+    updateProgress();
+  }
+
+  function endGame(reason) {
+    if (gameEnded) return;
+    gameEnded = true;
+    clearInterval(tickTimer);
+    showScreen('result');
+
+    let title, stat1;
+    switch (reason) {
+      case 'victory':
+        title = '🏆 위더를 물리치고 네더를 지켜냈다!';
+        stat1 = '결과: 완전 클리어 (보스 격퇴)';
+        break;
+      case 'survived':
+        title = '🛡️ 전투 종료! 네더를 버텨냈다';
+        stat1 = '결과: 생존 (일부 몹을 놓쳤어요)';
+        break;
+      case 'restart':
+        title = '💀 게임 오버! 처음부터 다시...';
+        stat1 = '결과: HP 소진 (자동 재시작 모드)';
+        break;
+      case 'result':
+        title = '🩹 HP 소진으로 전투 종료';
+        stat1 = '결과: HP 소진 (결과 화면 모드)';
+        break;
+    }
+
+    // 점수 계산: 정답 100점 × 정확도 보너스, 오답 -15점, 보스격파 +500
+    const durationSec = Math.round((Date.now() - gameStartTime) / 1000);
+    const accuracy = totalProblems > 0 ? correctCount / totalProblems : 0;
+    const score = Math.max(0,
+      Math.round(correctCount * 100 * accuracy)
+      - wrongAttempts * 15
+      + (bossDefeated ? 500 : 0)
+    );
+
+    $('resultTitle').textContent = title;
+    $('resultStat1').textContent = stat1;
+    $('resultStat2').textContent = `처치한 몹: ${correctCount}마리 / 전체 ${totalProblems}마리`;
+    $('resultStat3').textContent = `오답 횟수: ${wrongAttempts}회 · 남은 HP: ${hp}`;
+    $('resultStat4').textContent = `🏅 점수: ${score}점 · ⏱️ 소요시간: ${durationSec}초`;
+
+    // 기록 저장 (자동 재시작 모드 제외)
+    if (reason !== 'restart') {
+      const records = JSON.parse(localStorage.getItem(RESULTS_KEY) || '[]');
+      records.push({
+        date: new Date().toLocaleString('ko-KR'),
+        playerName,
+        book: selectedBook,
+        correctCount,
+        totalProblems,
+        wrongAttempts,
+        bossDefeated,
+        score,
+        durationSec,
+      });
+      localStorage.setItem(RESULTS_KEY, JSON.stringify(records));
+    }
+
+    if (reason === 'restart') {
+      setTimeout(() => {
+        resetAndStart();
+      }, 2500);
+    }
+  }
+
+  function resetAndStart() {
+    hp = MAX_HP;
+    spawnedCount = 0;
+    mobSectorCounter = 0;
+    resolvedCount = 0;
+    correctCount = 0;
+    wrongAttempts = 0;
+    bossDefeated = false;
+    mobs = [];
+    selectedMobId = null;
+    gameEnded = false;
+
+    const countSel = $('countSelect').value;
+    totalProblems = (countSel === 'random') ? randInt(10, 20) : Number(countSel);
+
+    updateHpBar();
+    updateProgress();
+    showScreen('game');
+
+    // 이름 적용
+    playerName = $('playerNameInput').value.trim() || '용사';
+    $('playerNameTag').textContent = playerName;
+
+    // 랜덤 배경 적용
+    const bg = BG_IMAGES[randInt(0, BG_IMAGES.length - 1)];
+    $('battlefield').style.backgroundImage = `url('${bg}')`;
+
+    gameStartTime = Date.now();
+    nextSpawnTime = 0;   // 첫 몹은 즉시 등장
+    spawnMob();          // 1번째 즉시
+    nextSpawnTime = Date.now() + SPAWN_INTERVAL_MS;   // 이후부터 시간차
+    renderMobs();
+
+    clearInterval(tickTimer);
+    tickTimer = setInterval(tick, APPROACH_TICK_MS);
+    $('answerInput').focus();
+  }
+
+  // ========== 기록 화면 ==========
+  function renderRecords() {
+    const records = JSON.parse(localStorage.getItem(RESULTS_KEY) || '[]');
+    const medals = ['🥇','🥈','🥉'];
+
+    // 책별 상위 3개
+    const byBook = {};
+    records.forEach(r => {
+      if (!byBook[r.book]) byBook[r.book] = [];
+      byBook[r.book].push(r);
+    });
+    const allSorted = [...records].sort((a,b) => b.score - a.score);
+    const top3 = allSorted.slice(0, 3);
+
+    const medalEl = $('medalsRow');
+    if (top3.length === 0) {
+      medalEl.innerHTML = '<div style="color:#888;font-size:14px;padding:12px 0">아직 기록이 없어요</div>';
+    } else {
+      medalEl.innerHTML = top3.map((r, i) => `
+        <div class="medal-card ${['gold','silver','bronze'][i]}">
+          <div class="medal-icon">${medals[i]}</div>
+          <div class="medal-name">${r.playerName}</div>
+          <div class="medal-score">${r.score}점</div>
+          <div class="medal-detail">${r.book} · ${r.durationSec}초 · 정답${r.correctCount}/${r.totalProblems}</div>
+          <div class="medal-detail">${r.date}</div>
+        </div>
+      `).join('');
+    }
+
+    const wrap = $('recordsTableWrap');
+    if (records.length === 0) {
+      wrap.innerHTML = '';
+      return;
+    }
+    const rows = [...records].reverse().map((r, i) => `
+      <tr>
+        <td>${records.length - i}</td>
+        <td>${r.date}</td>
+        <td>${r.playerName}</td>
+        <td>${r.book}</td>
+        <td style="color:#ffcc66;font-weight:bold">${r.score}점</td>
+        <td>${r.correctCount}/${r.totalProblems}</td>
+        <td>${r.wrongAttempts}회</td>
+        <td>${r.durationSec}초</td>
+        <td>${r.bossDefeated ? '🏆' : '—'}</td>
+      </tr>
+    `).join('');
+    wrap.innerHTML = `
+      <table>
+        <thead><tr>
+          <th>#</th><th>날짜</th><th>이름</th><th>교재</th>
+          <th>점수</th><th>정답</th><th>오답</th><th>시간</th><th>보스</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+  }
+
+  // ========== 교재 선택 버튼 초기화 ==========
+  (function initBookButtons() {
+    const row = $('bookBtnRow');
+    BOOK_LIST.forEach(book => {
+      const hasProblems = PROBLEM_DB.some(e => e.book === book.id);
+      const btn = document.createElement('button');
+      btn.className = 'book-btn' + (book.id === selectedBook ? ' active' : '') + (!hasProblems ? ' unavailable' : '');
+      btn.dataset.book = book.id;
+      btn.innerHTML = book.label.replace(' ', '<br>') + (!hasProblems ? '<small>준비 중</small>' : '');
+      if (hasProblems) {
+        btn.addEventListener('click', () => {
+          selectedBook = book.id;
+          row.querySelectorAll('.book-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+        });
+      }
+      row.appendChild(btn);
+    });
+  })();
+
+  // ========== 이벤트 바인딩 ==========
+  $('startBtn').addEventListener('click', () => {
+    endMode = $('endModeSelect').value;
+    resetAndStart();
+  });
+
+  $('retryBtn').addEventListener('click', () => { showScreen('start'); });
+  $('toRecordsBtn').addEventListener('click', () => { renderRecords(); showScreen('records'); });
+  $('recordsBtn').addEventListener('click', () => { renderRecords(); showScreen('records'); });
+  $('backToStartBtn').addEventListener('click', () => { showScreen('start'); });
+  $('clearRecordsBtn').addEventListener('click', () => {
+    if (confirm('기록을 전부 삭제할까요?')) {
+      localStorage.removeItem(RESULTS_KEY);
+      renderRecords();
+    }
+  });
+  $('exportCsvBtn').addEventListener('click', () => {
+    const records = JSON.parse(localStorage.getItem(RESULTS_KEY) || '[]');
+    if (!records.length) { alert('저장된 기록이 없어요'); return; }
+    const header = '순번,날짜,이름,교재,점수,정답수,전체문제,오답횟수,소요시간(초),보스격파\n';
+    const rows = records.map((r, i) =>
+      `${i+1},"${r.date}","${r.playerName}",${r.book},${r.score},${r.correctCount},${r.totalProblems},${r.wrongAttempts},${r.durationSec},${r.bossDefeated ? '예' : '아니오'}`
+    ).join('\n');
+    const blob = new Blob(['﻿' + header + rows], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `네더디펜스_기록_${new Date().toLocaleDateString('ko-KR').replace(/\. /g,'-').replace('.','')}.csv`;
+    a.click();
+  });
+
+  $('submitBtn').addEventListener('click', submitAnswer);
+  $('answerInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') submitAnswer();
+  });
+
+  showScreen('start');
+})();
+</script>
+
+</body>
+</html>

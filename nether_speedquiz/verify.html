@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>문제 유형 검수용 페이지</title>
+<style>
+  body { font-family: -apple-system, "Apple SD Gothic Neo", sans-serif; background: #1c1c1c; color: #eee; padding: 20px; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  p.desc { color: #aaa; font-size: 13px; margin-top: 0; }
+  .controls { margin-bottom: 16px; }
+  button { font-size: 14px; padding: 8px 16px; border-radius: 6px; border: none; background: #ff8c42; color: #1c1c1c; font-weight: bold; cursor: pointer; }
+  button:hover { background: #ffa566; }
+  .type-block { margin-bottom: 28px; }
+  .type-title { font-size: 16px; font-weight: bold; color: #ffcc66; margin-bottom: 8px; border-bottom: 1px solid #444; padding-bottom: 4px; }
+  table { border-collapse: collapse; width: 100%; }
+  td { padding: 4px 12px; font-size: 14px; border-bottom: 1px solid #333; }
+  td.idx { color: #777; width: 36px; text-align: right; }
+  td.expr { font-variant-numeric: tabular-nums; }
+  td.answer { color: #8fd694; font-variant-numeric: tabular-nums; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+</style>
+</head>
+<body>
+  <h1>🔍 랜덤 출제 문제 검수용 페이지</h1>
+  <p class="desc">소마셈 B2 사진 속 유형과 일치하는지 한눈에 확인하기 위한 페이지입니다. 게임의 문제 생성기와 동일한 로직으로 생성됩니다. (게임 플레이에는 영향 없음)</p>
+  <div class="controls">
+    <button id="regenBtn">🔄 새로 출제 (다시 생성)</button>
+    <span style="margin-left:12px; color:#999; font-size:13px;">유형별 30문제씩 생성</span>
+  </div>
+  <div id="output"></div>
+
+<script>
+  function randInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  // 유형1: 두 자리 - 한 자리, 받아내림 발생 (일의 자리 < 빼는 수)
+  function genType1() {
+    let a, b;
+    do {
+      a = randInt(10, 99);
+      b = randInt(2, 9);
+    } while ((a % 10) >= b);
+    return { text: `${a} - ${b}`, answer: a - b };
+  }
+
+  // 유형2: 두 자리 - 두 자리, 받아내림 발생 (일의 자리끼리 빌려와야 함, 결과는 양수)
+  function genType2() {
+    let a, b;
+    do {
+      a = randInt(20, 99);
+      b = randInt(10, a - 1);
+    } while ((a % 10) >= (b % 10));
+    return { text: `${a} - ${b}`, answer: a - b };
+  }
+
+  // 유형3: 세 수의 덧셈, 받아올림 발생 (일의 자리 합이 10 이상)
+  function genType3() {
+    let a, b, c;
+    do {
+      a = randInt(10, 49);
+      b = randInt(10, 49);
+      c = randInt(10, 49);
+    } while ((a % 10) + (b % 10) + (c % 10) < 10);
+    return { text: `${a} + ${b} + ${c}`, answer: a + b + c };
+  }
+
+  // 유형4: 세 수의 뺄셈, 받아내림 발생 (A - B - C, 첫 번째 뺄셈에서 받아내림 / 결과는 자연수)
+  function genType4() {
+    let a, b, c;
+    do {
+      a = randInt(40, 99);
+      b = randInt(10, a - 20);
+      c = randInt(10, a - b);
+    } while ((a % 10) >= (b % 10));
+    return { text: `${a} - ${b} - ${c}`, answer: a - b - c };
+  }
+
+  // 유형5: 세 수의 덧셈과 뺄셈 (A + B - C), 덧셈에서 받아올림 발생 / 결과는 자연수
+  function genType5() {
+    let a, b, c;
+    do {
+      a = randInt(10, 49);
+      b = randInt(10, 49);
+      c = randInt(10, a + b);
+    } while ((a % 10) + (b % 10) < 10);
+    return { text: `${a} + ${b} - ${c}`, answer: a + b - c };
+  }
+
+  // 유형6: 세 수의 덧셈과 뺄셈 (A - B + C), 뺄셈에서 받아내림 발생
+  function genType6() {
+    let a, b, c;
+    do {
+      a = randInt(20, 99);
+      b = randInt(10, a - 1);
+      c = randInt(10, 49);
+    } while ((a % 10) >= (b % 10));
+    return { text: `${a} - ${b} + ${c}`, answer: a - b + c };
+  }
+
+  const TYPES = [
+    { name: '유형 1 — 두 자리 − 한 자리 (받아내림)', gen: genType1 },
+    { name: '유형 2 — 두 자리 − 두 자리 (받아내림)', gen: genType2 },
+    { name: '유형 3 — 세 수의 덧셈 A+B+C (받아올림)', gen: genType3 },
+    { name: '유형 4 — 세 수의 뺄셈 A-B-C (받아내림)', gen: genType4 },
+    { name: '유형 5 — 세 수의 덧셈과 뺄셈 A+B-C (덧셈에서 받아올림)', gen: genType5 },
+    { name: '유형 6 — 세 수의 덧셈과 뺄셈 A-B+C (뺄셈에서 받아내림)', gen: genType6 },
+  ];
+  const COUNT_PER_TYPE = 30;
+
+  function render() {
+    const out = document.getElementById('output');
+    out.innerHTML = '';
+    TYPES.forEach(({ name, gen }) => {
+      const block = document.createElement('div');
+      block.className = 'type-block';
+      const title = document.createElement('div');
+      title.className = 'type-title';
+      title.textContent = name;
+      block.appendChild(title);
+
+      const grid = document.createElement('div');
+      grid.className = 'grid';
+      for (let col = 0; col < 3; col++) {
+        const table = document.createElement('table');
+        for (let i = 0; i < COUNT_PER_TYPE / 3; i++) {
+          const idx = col * (COUNT_PER_TYPE / 3) + i + 1;
+          const { text, answer } = gen();
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td class="idx">${idx}.</td><td class="expr">${text} =</td><td class="answer">${answer}</td>`;
+          table.appendChild(tr);
+        }
+        grid.appendChild(table);
+      }
+      block.appendChild(grid);
+      out.appendChild(block);
+    });
+  }
+
+  document.getElementById('regenBtn').addEventListener('click', render);
+  render();
+</script>
+</body>
+</html>
